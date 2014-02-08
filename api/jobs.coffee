@@ -53,7 +53,7 @@ module.exports = exports =
         , (err, data) ->
           return res.send 500, err if err
           fs.writeFileSync job_script, data, mode: 0o776
-          proc = cp.spawn job_script
+          proc = cp.spawn job_script, [], detached: true
           start_time = new Date()
           result =
             repo: repo
@@ -92,21 +92,25 @@ module.exports = exports =
     res.sendfile path.join(config.jobs.path, req.param('job_id'), 'job.json')
 
   list: (req, res) ->
-    result = all: [], jobs: []
-    fs.readdir config.jobs.path, (err, files) ->
-      _.each files, (filename) ->
-        jobFile = path.join(config.jobs.path, filename, 'job.json')
-        delete require.cache[jobFile]
-        result.all.push require(jobFile) if fs.existsSync jobFile
-      _.each jobs, (job) ->
-        result.jobs.push job.job_info
+    result = jobs: []
+    result.jobs.push job.job_info for job in jobs
+    if req.param('all') not in ['true', '1']
       res.json result
+    else
+      fs.readdir config.jobs.path, (err, files) ->
+        files = _.map(files, (f) -> path.join(config.jobs.path, f, 'job.json')).filter (f) -> fs.existsSync(f)
+        result.all = _.map files, (f) ->
+          delete require.cache[f]
+          require(f)
+        res.json result
 
   cancel: (req, res) ->
-    for job in jobs when job.job_info.job_id is req.params.job_id
-      job.proc.kill()
-      return res.send 200
-    res.send 410, 'The requested job is already dead!'
+    job = _.find jobs, (job) -> job.job_info.job_id is req.params.job_id
+    if job
+      process.kill -job.proc.pid, 'SIGKILL'
+      res.send 200
+    else
+      res.send 410, 'The requested job is already dead!'
 
   files: (req, res) ->
     filename = path.join config.jobs.path, req.params.job_id, req.params[0]
