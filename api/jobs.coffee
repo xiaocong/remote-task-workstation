@@ -86,3 +86,19 @@ module.exports = exports =
     init_script = path.join config.jobs.path, req.param('job_id'), 'repo', req.param('script_name')
     init_json = YAML.load init_script
     res.render 'init_script', init: init_json
+
+  get: (req, res) ->
+    job_id = req.param('job_id')
+    res.sendfile path.join(config.jobs.path, req.param('job_id'), 'job.json')
+
+  list: (req, res) ->
+    result = all: [], jobs: []
+    fs.readdir config.jobs.path, (err, files) ->
+      _.each files, (filename) ->
+        jobFile = path.join(config.jobs.path, filename, 'job.json')
+        if fs.existsSync jobFile
+          data = fs.readFileSync jobFile, encoding: 'utf8'
+          result.all.push JSON.parse(data)
+      _.each jobs, (job) ->
+        result.jobs.push job.job_info
+      res.json result
