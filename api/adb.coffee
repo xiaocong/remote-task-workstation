@@ -6,7 +6,7 @@ cmd = (timeout, cmd_line, callback) ->
   cmd_line = "adb #{cmd_line}"
   cp.exec cmd_line, {timeout: timeout*1000}, callback
 
-module.exports =
+module.exports = exports =
   devices: (status, callback) ->
     cp.exec 'adb devices', (error, stdout, stderr) ->
       devices = {}

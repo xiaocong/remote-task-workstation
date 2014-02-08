@@ -1,0 +1,35 @@
+#!/bin/bash
+
+<% if (repo.branch) { -%>
+CMD="git clone -b <%= repo.branch %> <%= repo.url %> <%= local_repo %>"
+<% } else { -%>
+CMD="git clone <%= repo.url %> <%= local_repo %>"
+<% } %>
+expect -c "
+  set timeout 30;
+  spawn $CMD
+  expect {
+    \"Are you sure you want to continue connecting (yes/no)?*\" {send \"yes\r\";}
+    \"password:\" {send \"<%= repo.password || '' %>\r\";}
+  }
+  expect eof
+"
+
+rc=$?
+if [[ $rc != 0 ]] ; then
+    echo "Error during download repo!"
+    exit $rc
+fi
+
+cd <%= local_repo %>
+
+<% for (var key in env) { -%>
+export <%= key %>=<%= env[key] %>
+<% } -%>
+
+curl <%= init_script %> | stdbuf -oL -eL bash
+
+rc=$?
+if [[ $rc != 0 ]] ; then
+    exit $rc
+fi

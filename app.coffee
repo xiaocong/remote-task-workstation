@@ -6,13 +6,15 @@ express = require('express')
 http = require('http')
 path = require('path')
 
+config = require('./api/config')
+
 app = express()
 
 # all environments
-app.set 'port', process.env.PORT or 3000
+app.set 'port', config.port
 app.set 'views', path.join(__dirname, 'views')
-app.set 'jobs', express.static(path.join(__dirname, 'jobs'))
-app.set 'view engine', 'jade'
+app.set 'view engine', 'ejs'
+
 app.use express.favicon()
 app.use express.logger('dev')
 app.use express.json()
@@ -28,4 +30,3 @@ require('./api')(app)
 
 http.createServer(app).listen app.get('port'), ->
   console.log 'Express server listening on port ' + app.get('port')
-
