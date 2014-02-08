@@ -12,7 +12,7 @@ config = require('./config')
 jobs = []
 
 saveJson = (filename, data) ->
-  fs.writeFileSync filename, JSON.stringify(data, null, 2)
+  fs.writeFile filename, JSON.stringify(data, null, 2), (err) ->
 
 removeJob = (job) ->
   index = jobs.indexOf job
@@ -21,7 +21,7 @@ removeJob = (job) ->
 module.exports = exports =
   create: (req, res) ->
     repo = req.param('repo')
-    job_id = req.param('job_id') or require('node-uuid').v4()
+    job_id = req.params.job_id or require('node-uuid').v4()
     if not repo
       return res.send 400, '"repo" is a mandatory parameter for creating a new job!'
     exclusive = req.param('exclusive') not in ['false', 'f', 'False']
@@ -36,7 +36,7 @@ module.exports = exports =
         return res.send 404, 'No specified device attached!'
       if _.some(jobs, (job) -> job.job_info.job_id is job_id)
         return res.send 409, 'A job with the same job_id is running! If you want to re-run the job, please stop the running one firestly.'
-      job_path = "#{config.jobs.path}/#{job_id}"
+      job_path = path.join config.jobs.path, job_id
       require('rimraf').sync(job_path)
       fs.mkdirSync(job_path)
       workspace = "#{job_path}/workspace"
@@ -64,7 +64,7 @@ module.exports = exports =
             exclusive: exclusive
             started_at: start_time.getTime()/1000
             started_datetime: start_time.toString()
-          job = 'proc': proc, 'job_info': result
+          job = proc: proc, job_info: result
           jobs.push job
           saveJson job_info, result
           proc.stdout.on 'data', (data) ->
@@ -88,7 +88,7 @@ module.exports = exports =
     res.render 'init_script', init: init_json
 
   get: (req, res) ->
-    job_id = req.param('job_id')
+    job_id = req.params.job_id
     res.sendfile path.join(config.jobs.path, req.param('job_id'), 'job.json')
 
   list: (req, res) ->
@@ -96,9 +96,56 @@ module.exports = exports =
     fs.readdir config.jobs.path, (err, files) ->
       _.each files, (filename) ->
         jobFile = path.join(config.jobs.path, filename, 'job.json')
-        if fs.existsSync jobFile
-          data = fs.readFileSync jobFile, encoding: 'utf8'
-          result.all.push JSON.parse(data)
+        delete require.cache[jobFile]
+        result.all.push require(jobFile) if fs.existsSync jobFile
       _.each jobs, (job) ->
         result.jobs.push job.job_info
       res.json result
+
+  cancel: (req, res) ->
+    for job in jobs when job.job_info.job_id is req.params.job_id
+      job.proc.kill()
+      return res.send 200
+    res.send 410, 'The requested job is already dead!'
+
+  files: (req, res) ->
+    filename = path.join config.jobs.path, req.params.job_id, req.params[0]
+    fs.stat filename, (err, stats) ->
+      return res.send 404 if err
+
+      if stats.isFile()
+        res.sendfile filename
+      else if stats.isDirectory()
+        fs.readdir filename, (err, files) ->
+          return res.send 500 if err
+          result = for file in files
+            st = fs.statSync path.join(filename, file)
+            name: file, is_dir: st.isDirectory(), create_time: st.ctime.getTime()/1000, modify_time: st.mtime.getTime()/1000, size: st.size
+          res.json files: result
+      else
+        res.send 500
+
+  delete_files: (req, res) ->
+    for job in jobs when job.job_info.job_id is req.params.job_id
+      return res.send 409, 'The specified job is running!'
+    require('rimraf') path.join(config.jobs.path, req.params.job_id), (err) ->
+      res.send if err then 500 else 200
+
+  stream: (req, res) ->
+    lines = Number(req.param('lines')) or 40
+    job = _.find jobs, (job) -> job.job_info.job_id is req.params.job_id
+    job_out = path.join config.jobs.path, req.params.job_id, 'output'
+    tail = if job
+      cp.spawn 'tail', ["--lines=#{lines}", "--pid=#{job.proc.pid}", "-f", job_out]
+    else
+      cp.spawn 'tail', ["--lines=#{lines}", job_out]
+    timer = setInterval ->
+      res.write '\0'
+    , 5000
+    tail.stdout.on 'data', (data) ->
+      res.write data
+    tail.on 'close', (code, signal) ->
+      clearInterval timer
+      res.end()
+    res.on 'close', ->
+      tail.kill()
