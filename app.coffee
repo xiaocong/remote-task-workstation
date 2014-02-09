@@ -6,7 +6,7 @@ express = require('express')
 http = require('http')
 path = require('path')
 
-config = require('./api/config')
+config = require('./lib/config')
 
 app = express()
 
@@ -26,7 +26,9 @@ app.use app.router
 # development only
 app.use express.errorHandler()  if 'development' is app.get('env')
 
-require('./api')(app)
+require('./lib/api')(app)
 
 http.createServer(app).listen app.get('port'), ->
   console.log 'Express server listening on port ' + app.get('port')
+
+require('./lib/workstation').regToHttpServer()

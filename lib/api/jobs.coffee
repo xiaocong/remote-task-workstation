@@ -6,8 +6,8 @@ cp = require('child_process')
 path = require('path')
 YAML = require('yamljs')
 
-adb = require('./adb')
-config = require('./config')
+adb = require('../adb')
+config = require('../config')
 
 jobs = []
 
@@ -18,7 +18,11 @@ removeJob = (job) ->
   index = jobs.indexOf job
   jobs.splice index, 1 if index >= 0
 
+jobsInfo = -> jobs: (job.job_info for job in jobs)
+
 module.exports = exports =
+  jobsInfo: jobsInfo
+
   create: (req, res) ->
     repo = req.param('repo')
     job_id = req.params.job_id or require('node-uuid').v4()
@@ -92,8 +96,7 @@ module.exports = exports =
     res.sendfile path.join(config.jobs.path, req.param('job_id'), 'job.json')
 
   list: (req, res) ->
-    result = jobs: []
-    result.jobs.push job.job_info for job in jobs
+    result = jobsInfo()
     if req.param('all') not in ['true', '1']
       res.json result
     else
