@@ -1,0 +1,36 @@
+#!/bin/bash
+
+<% var python = init.python || '2.7' -%>
+virtualenv --system-site-packages -p /usr/bin/python<%= python %> .venv
+if [ "$?" -ne "0" ]; then
+  echo "Error during creating virtual environment!"
+  exit 1
+fi
+source .venv/bin/activate
+
+<% for (var install in (init.install || [])) { -%>
+<%- init.install[install] %>
+if [ "$?" -ne "0" ]; then
+  echo "Error during installing packages!"
+  exit 1
+fi
+<% } -%>
+
+frc=0
+<% for (var before_script in (init.before_script || [])) { %>
+<%- init.before_script[before_script] %>
+<% } -%>
+
+<% for (var script in (init.script || [])) { %>
+<%- init.script[script] %>
+rc=$?
+if [[ $rc != 0 ]] ; then
+    frc=$rc
+fi
+<% } -%>
+
+<% for (var after_script in (init.after_script || [])) { %>
+<%- init.after_script[after_script] %>
+<% } -%>
+
+exit $frc
