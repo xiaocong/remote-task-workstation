@@ -16,6 +16,8 @@
     "yamljs": "~0.1.4",
     "socket.io-client": "~0.9.16",
     "request": "~2.33.0",
-    "socket.io-stream": "~0.5.2"
+    "socket.io-stream": "~0.5.2",
+    "node-zookeeper-client": "~0.2.0",
+    "backbone": "~1.1.0"
   }
 }
