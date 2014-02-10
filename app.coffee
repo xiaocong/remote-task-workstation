@@ -31,4 +31,4 @@ require('./lib/api')(app)
 http.createServer(app).listen app.get('port'), ->
   console.log 'Express server listening on port ' + app.get('port')
 
-require('./lib/workstation').regToHttpServer()
+require('./lib/register').regToHttpServer()
