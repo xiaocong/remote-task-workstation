@@ -21,6 +21,7 @@ ip = do ->
 getInfo = do ->
   info =
     mac: fs.readFileSync('/sys/class/net/eth0/address').toString().trim()
+    owner: config.owner
     api:
       status: 'up'
       jobs: []
@@ -115,6 +116,7 @@ module.exports = exports = register =
               ip: ip,
               mac: msg.mac
               uname: msg.uname
+              owner: msg.owner
               api: getApi(msg)
 
             zk.create zk_point(msg.mac), new Buffer(JSON.stringify zkNodeInfo.toJSON()), zookeeper.CreateMode.EPHEMERAL, (err, path) ->
