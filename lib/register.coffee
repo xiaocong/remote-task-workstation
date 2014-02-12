@@ -49,30 +49,14 @@ module.exports = exports = register =
     serverUrl = "http://localhost:#{config.port}"
     socket = io.connect(config.reg_server)
     iostream = require('socket.io-stream')
-    ss = iostream(socket)
-    ss.on 'http', (body, options) ->
-      headers = {}
-      headers[key] = value for key, value of options.headers when key in ['content-type', 'accept']
-      rawData = ''
-      body.on 'data', (chunk) ->
-        rawData += chunk
-      body.on 'end', ->
-        opt =
-          url: "#{serverUrl}#{options.path}"
-          method: options.method or 'GET'
-          qs: options.query or ''
-          headers: headers
-          body: rawData
-        req = request(opt)
-        stream = iostream.createStream()
-        req.on('error', (err) ->
-          stream.end(err)
-        ).pipe stream
-        req.on 'response', (response) ->
-          ss.emit 'response', stream,
-            statusCode: response.statusCode
-            headers: response.headers
-            id: options.id
+
+    register = (cb) ->
+      getInfo (info) ->
+        socket.emit 'register', info, cb
+
+    update = ->
+      getInfo (info) ->
+        socket.emit 'update', info
 
     socket.on 'connect', ->
       callback = (options) ->
@@ -85,13 +69,30 @@ module.exports = exports = register =
           socket.on 'disconnect', -> clearInterval intervalId
       register callback
 
-    register = (cb) ->
-      getInfo (info) ->
-        socket.emit 'register', info, cb
-
-    update = ->
-      getInfo (info) ->
-        socket.emit 'update', info
+      ss = iostream(socket)
+      ss.on 'http', (body, options) ->
+        headers = {}
+        headers[key] = value for key, value of options.headers when key in ['content-type', 'accept']
+        rawData = ''
+        body.on 'data', (chunk) ->
+          rawData += chunk
+        body.on 'end', ->
+          opt =
+            url: "#{serverUrl}#{options.path}"
+            method: options.method or 'GET'
+            qs: options.query or ''
+            headers: headers
+            body: rawData
+          req = request(opt)
+          stream = iostream.createStream()
+          req.on('error', (err) ->
+            stream.end(err)
+          ).pipe stream
+          req.on 'response', (response) ->
+            ss.emit 'response', stream,
+              statusCode: response.statusCode
+              headers: response.headers
+              id: options.id
 
   regToZookeeperServer: ->
     zk = zookeeper.createClient(config.zk.url)
