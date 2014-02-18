@@ -70,6 +70,8 @@ module.exports = exports = register =
       register callback
 
       ss = iostream(socket)
+      socket.on 'disconnect', ->
+        ss.removeAllListeners()
       ss.on 'http', (body, options) ->
         headers = {}
         headers[key] = value for key, value of options.headers when key in ['content-type', 'accept']
