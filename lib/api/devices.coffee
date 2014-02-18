@@ -55,9 +55,12 @@ module.exports = exports =
     if height is 0 and width is 0
       width = height = 480
     cp.exec "adb -s #{req.params.serial} shell screencap -p | sed s/\r$//", {maxBuffer: 16*1024*1024, encoding: 'binary'}, (error, stdout, stderr) ->
-      gm(new Buffer(stdout, 'binary'), 'screen.png').resize(width, height).stream (err, stdout, stderr) ->
-        stdout.pipe res
+      gm(new Buffer(stdout, 'binary'), 'screen.png').resize(width, height).toBuffer (err, buffer) ->
         res.type 'png'
+        res.send buffer
+      # gm(new Buffer(stdout, 'binary'), 'screen.png').resize(width, height).stream (err, stdout, stderr) ->
+      #   stdout.pipe res
+      #   res.type 'png'
 
   screenshot2: (req, res) ->
     height = Number(req.query.height or 0)
@@ -67,7 +70,11 @@ module.exports = exports =
     png_file = path.join '/tmp', "#{new Date().getTime().toString()}.png"
     cp.exec "java -classpath #{path.join(__dirname, 'jar', 'ddms.jar')}:#{path.join(__dirname, 'jar', 'screenshot.jar')} com.android.screenshot.Screenshot -s #{req.params.serial} #{png_file}", (error, stdout, stderr) ->
       return res.send 500 if error
-      gm(png_file).resize(width, height).stream (err, stdout, stderr) ->
-        stdout.pipe res
+      gm(png_file).resize(width, height).toBuffer (err, buffer) ->
         res.type 'png'
+        res.send buffer
         cp.exec "rm #{png_file}"
+      # gm(png_file).resize(width, height).stream (err, stdout, stderr) ->
+      #   stdout.pipe res
+      #   res.type 'png'
+      #   cp.exec "rm #{png_file}"
