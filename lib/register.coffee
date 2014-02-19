@@ -8,9 +8,12 @@ zookeeper = require('node-zookeeper-client')
 Backbone = require('backbone')
 _ = require('underscore')
 
+logger = require('./logger')
 config = require('./config')
 devices = require('./api/devices')
 jobs = require('./api/jobs')
+
+require("http").globalAgent.maxSockets = 10000  # bull shit, default is 5!!!
 
 ip = do ->
   ifaces = os.networkInterfaces()
@@ -69,16 +72,23 @@ module.exports = exports = register =
           socket.on 'disconnect', -> clearInterval intervalId
       register callback
 
-      ss = iostream(socket)
       socket.on 'disconnect', ->
-        ss.removeAllListeners()
-      ss.on 'http', (body, options) ->
+        iostream(socket).removeAllListeners 'http'
+
+      requests = {}
+      socket.on 'close-http-response', (options) ->
+        logger.debug "Local request #{options.id} aborts!"
+        requests["#{options.id}"]?.abort()
+
+      iostream(socket).on 'http', (body, options) ->
+        logger.debug "Received http request on #{options.path}, id: #{options.id}"
         headers = {}
         headers[key] = value for key, value of options.headers when key in ['content-type', 'accept']
         rawData = ''
         body.on 'data', (chunk) ->
           rawData += chunk
         body.on 'end', ->
+          logger.debug "Request body is '#{rawData}', id: #{options.id}"
           opt =
             url: "#{serverUrl}#{options.path}"
             method: options.method or 'GET'
@@ -86,12 +96,17 @@ module.exports = exports = register =
             headers: headers
             body: rawData
           req = request(opt)
+          requests["#{options.id}"] = req
           stream = iostream.createStream()
+          stream.on 'end', ->
+            logger.debug "Stream #{options.id} ended!"
+            delete requests["#{options.id}"]
           req.on('error', (err) ->
             stream.end(err)
           ).pipe stream
           req.on 'response', (response) ->
-            ss.emit 'response', stream,
+            logger.debug "Begin responding to request id: #{options.id}"
+            iostream(socket).emit 'response', stream,
               statusCode: response.statusCode
               headers: response.headers
               id: options.id

@@ -7,6 +7,7 @@ http = require('http')
 path = require('path')
 
 config = require('./lib/config')
+logger = require('./lib/logger')
 
 app = express()
 
@@ -16,7 +17,7 @@ app.set 'views', path.join(__dirname, 'views')
 app.set 'view engine', 'ejs'
 
 app.use express.favicon()
-app.use express.logger('dev')
+app.use express.logger(stream: {write: (msg, encode) -> logger.info(msg)})
 app.use express.json()
 app.use express.urlencoded()
 app.use express.methodOverride()
@@ -29,6 +30,6 @@ app.use express.errorHandler()  if 'development' is app.get('env')
 require('./lib/api')(app)
 
 http.createServer(app).listen app.get('port'), ->
-  console.log 'Express server listening on port ' + app.get('port')
+  logger.info 'Express server listening on port ' + app.get('port')
 
 require('./lib/register').register()
