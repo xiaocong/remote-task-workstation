@@ -6,50 +6,65 @@ gm = require('gm')
 _ = require('underscore')
 path = require('path')
 
-devicesInfo = (status, callback) ->
-  result = android: []
-  adb.devices status or 'all', (err, devices) ->
-    count = 0
-    for serial, name of devices
-      count += 1
-    return callback result if count is 0
+versions =
+  java: {}
 
-    _.each devices, (name, serial) ->
-      device = 'adb': {'serial': serial, 'device': name}
-      adb.getprop serial, (err, props) ->
-        if not err
-          device.product =
-            'brand': props['ro.product.brand']
-            'manufacturer': props['ro.product.manufacturer']
-            'model': props['ro.product.model']
-            'board': props['ro.product.board']
-            'device': props['ro.product.device']
-          device.locale =
-            'language': props['ro.product.locale.language']
-            'region': props['ro.product.locale.region']
-          device.build =
-            'fingerprint': props['ro.build.fingerprint']
-            'type': props['ro.build.type']
-            'date_utc': props['ro.build.date.utc']
-            'display_id': props['ro.build.display.id']
-            'id': props['ro.build.id']
-            'version':
-              'incremental': props['ro.build.version.incremental']
-              'release': props['ro.build.version.release']
-              'sdk': props['ro.build.version.sdk']
-              'codename': props['ro.build.version.codename']
-        count -= 1
-        callback(result) if count is 0
-      result.android.push device
+do ->
+  cp.exec 'java -version 2>&1', (error, stdout, stderr) ->
+    if m = stdout.match /^java\s+version\s+"(\d+)\.(\d+)\.(\d+)/
+      versions.java.major = Number(m[1])
+      versions.java.minor = Number(m[2])
 
-module.exports = exports =
-  devicesInfo: devicesInfo
+module.exports = exports = devInfo =
+  devicesInfo: (status, callback) ->
+    result = android: []
+    adb.devices status or 'all', (err, devices) ->
+      count = 0
+      for serial, name of devices
+        count += 1
+      return callback result if count is 0
+
+      _.each devices, (name, serial) ->
+        device = 'adb': {'serial': serial, 'device': name}
+        adb.getprop serial, (err, props) ->
+          if not err
+            device.product =
+              'brand': props['ro.product.brand']
+              'manufacturer': props['ro.product.manufacturer']
+              'model': props['ro.product.model']
+              'board': props['ro.product.board']
+              'device': props['ro.product.device']
+            device.locale =
+              'language': props['ro.product.locale.language']
+              'region': props['ro.product.locale.region']
+            device.build =
+              'fingerprint': props['ro.build.fingerprint']
+              'type': props['ro.build.type']
+              'date_utc': props['ro.build.date.utc']
+              'display_id': props['ro.build.display.id']
+              'id': props['ro.build.id']
+              'version':
+                'incremental': props['ro.build.version.incremental']
+                'release': props['ro.build.version.release']
+                'sdk': props['ro.build.version.sdk']
+                'codename': props['ro.build.version.codename']
+          count -= 1
+          callback(result) if count is 0
+        result.android.push device
 
   list: (req, res) ->
-    devicesInfo req.query.status or 'all', (info) ->
+    devInfo.devicesInfo req.query.status or 'all', (info) ->
       res.json info
 
   screenshot: (req, res) ->
+    if versions.java.major >= 1 and versions.java.minor >= 7
+      console.log "java 1.7"
+      devInfo.ddmsScreenshot req, res
+    else
+      console.log 'screencap'
+      devInfo.screencap req, res
+
+  screencap: (req, res) ->
     height = Number(req.query.height or 0)
     width = Number(req.query.width or 0)
     if height is 0 and width is 0
@@ -62,7 +77,7 @@ module.exports = exports =
       #   stdout.pipe res
       #   res.type 'png'
 
-  screenshot2: (req, res) ->
+  ddmsScreenshot: (req, res) ->
     height = Number(req.query.height or 0)
     width = Number(req.query.width or 0)
     if height is 0 and width is 0
