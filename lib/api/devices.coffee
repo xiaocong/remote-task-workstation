@@ -58,10 +58,8 @@ module.exports = exports = devInfo =
 
   screenshot: (req, res) ->
     if versions.java.major >= 1 and versions.java.minor >= 7
-      console.log "java 1.7"
       devInfo.ddmsScreenshot req, res
     else
-      console.log 'screencap'
       devInfo.screencap req, res
 
   screencap: (req, res) ->
