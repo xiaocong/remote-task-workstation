@@ -21,14 +21,14 @@ Installation
 
 - Android SDK
 
-    Follow [Get the Android SDK][http://developer.android.com/sdk/index.html] to install android sdk.
+    Follow [Get the Android SDK](http://developer.android.com/sdk/index.html) to install android sdk.
 
     Note: Don't forget to add `adb` in your path environment.
 
 
 ### Nodejs Runtime
 
-Install it from [Nodejs Official site][http://nodejs.org/], or via [nvm][https://github.com/creationix/nvm].
+Install it from [Nodejs Official site](http://nodejs.org/), or via [nvm](https://github.com/creationix/nvm).
 
 Note: Nodejs version should >= v0.10.*
 
