@@ -14,7 +14,7 @@ module.exports = exports =
 
       error_statuses = ['offline', 'no permissions', 'unauthorized']
       lines = stdout.split(/[\n\r]+/)
-      for line in lines when m = line.match(/([\w\d]+)\t([\d\s\w]+)/)
+      for line in lines when m = line.match(/([\w\d\:\.]+)\t([\d\s\w]+)/)
         if status in ['ok', 'ready', 'good', 'alive'] and m[2] not in error_statuses
           devices[m[1]] = m[2]
         else if status in ['error', 'err', 'bad'] and m[2] in error_statuses
