@@ -29,8 +29,7 @@ git submodule update
 export <%= key %>=<%= env[key] %>
 <% } -%>
 
-curl <%= init_script %> > run_init.sh
-/bin/bash run_init.sh
+curl <%= init_script %> | stdbuf -oL -eL bash
 
 rc=$?
 if [[ $rc != 0 ]] ; then

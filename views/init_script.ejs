@@ -15,27 +15,38 @@ source .venv/bin/activate
 
 <% for (var install in (init.install || [])) { -%>
 <%- init.install[install] %>
-if [ "$?" -ne "0" ]; then
-  echo "Error during installing packages!"
-  exit 1
+rc=$?
+if [[ $rc != 0 ]] ; then
+  echo "Error during installing!"
+  exit $rc
 fi
 <% } -%>
 
-frc=0
 <% for (var before_script in (init.before_script || [])) { -%>
 <%- init.before_script[before_script] %>
+rc=$?
+if [[ $rc != 0 ]] ; then
+  echo "Error during before_script!"
+  exit $rc
+fi
 <% } -%>
 
 <% for (var script in (init.script || [])) { -%>
 <%- init.script[script] %>
 rc=$?
 if [[ $rc != 0 ]] ; then
-    frc=$rc
+  echo "Error during running script!"
+  exit $rc
 fi
 <% } -%>
 
 <% for (var after_script in (init.after_script || [])) { -%>
 <%- init.after_script[after_script] %>
+rc=$?
+if [[ $rc != 0 ]] ; then
+  echo "Error during after_script!"
+  exit $rc
+fi
 <% } -%>
 
-exit $frc
+exit 0
