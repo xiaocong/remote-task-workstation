@@ -22,6 +22,8 @@ if [[ $rc != 0 ]] ; then
 fi
 
 cd <%= local_repo %>
+git submodule init
+git submodule update
 
 <% for (var key in env) { -%>
 export <%= key %>=<%= env[key] %>

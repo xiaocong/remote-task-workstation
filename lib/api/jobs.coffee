@@ -110,7 +110,7 @@ module.exports = exports =
   cancel: (req, res) ->
     job = _.find jobs, (job) -> job.job_info.job_id is req.params.job_id
     if job
-      process.kill -job.proc.pid, 'SIGKILL'
+      process.kill -job.proc.pid, 'SIGTERM'
       res.send 200
     else
       res.send 410, 'The requested job is already dead!'

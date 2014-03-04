@@ -1,5 +1,7 @@
 #!/bin/bash
 
+<% var lang = init.lang || init.language || 'python' -%>
+<% if (lang === 'python') { -%>
 <% var python = init.python || '2.7' -%>
 virtualenv --system-site-packages -p /usr/bin/python<%= python %> .venv
 if [ "$?" -ne "0" ]; then
@@ -7,6 +9,9 @@ if [ "$?" -ne "0" ]; then
   exit 1
 fi
 source .venv/bin/activate
+<% } else if (lang === 'shell' || lang === 'sh' || lang === 'bash') { -%>
+/bin/bash
+<% } -%>
 
 <% for (var install in (init.install || [])) { -%>
 <%- init.install[install] %>
@@ -17,11 +22,11 @@ fi
 <% } -%>
 
 frc=0
-<% for (var before_script in (init.before_script || [])) { %>
+<% for (var before_script in (init.before_script || [])) { -%>
 <%- init.before_script[before_script] %>
 <% } -%>
 
-<% for (var script in (init.script || [])) { %>
+<% for (var script in (init.script || [])) { -%>
 <%- init.script[script] %>
 rc=$?
 if [[ $rc != 0 ]] ; then
@@ -29,7 +34,7 @@ if [[ $rc != 0 ]] ; then
 fi
 <% } -%>
 
-<% for (var after_script in (init.after_script || [])) { %>
+<% for (var after_script in (init.after_script || [])) { -%>
 <%- init.after_script[after_script] %>
 <% } -%>
 

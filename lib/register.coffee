@@ -8,9 +8,12 @@ zookeeper = require('node-zookeeper-client')
 Backbone = require('backbone')
 _ = require('underscore')
 
+logger = require('./logger')
 config = require('./config')
 devices = require('./api/devices')
 jobs = require('./api/jobs')
+
+require("http").globalAgent.maxSockets = 10000  # bull shit, default is 5!!!
 
 ip = do ->
   ifaces = os.networkInterfaces()
@@ -21,6 +24,7 @@ ip = do ->
 getInfo = do ->
   info =
     mac: fs.readFileSync('/sys/class/net/eth0/address').toString().trim()
+    owner: config.owner
     api:
       status: 'up'
       jobs: []
@@ -48,30 +52,14 @@ module.exports = exports = register =
     serverUrl = "http://localhost:#{config.port}"
     socket = io.connect(config.reg_server)
     iostream = require('socket.io-stream')
-    ss = iostream(socket)
-    ss.on 'http', (body, options) ->
-      headers = {}
-      headers[key] = value for key, value of options.headers when key in ['content-type', 'accept']
-      rawData = ''
-      body.on 'data', (chunk) ->
-        rawData += chunk
-      body.on 'end', ->
-        opt =
-          url: "#{serverUrl}#{options.path}"
-          method: options.method or 'GET'
-          qs: options.query or ''
-          headers: headers
-          body: rawData
-        req = request(opt)
-        stream = iostream.createStream()
-        req.on('error', (err) ->
-          stream.end(err)
-        ).pipe stream
-        req.on 'response', (response) ->
-          ss.emit 'response', stream,
-            statusCode: response.statusCode
-            headers: response.headers
-            id: options.id
+
+    register = (cb) ->
+      getInfo (info) ->
+        socket.emit 'register', info, cb
+
+    update = ->
+      getInfo (info) ->
+        socket.emit 'update', info
 
     socket.on 'connect', ->
       callback = (options) ->
@@ -84,13 +72,44 @@ module.exports = exports = register =
           socket.on 'disconnect', -> clearInterval intervalId
       register callback
 
-    register = (cb) ->
-      getInfo (info) ->
-        socket.emit 'register', info, cb
+      socket.on 'disconnect', ->
+        iostream(socket).removeAllListeners 'http'
 
-    update = ->
-      getInfo (info) ->
-        socket.emit 'update', info
+      requests = {}
+      socket.on 'close-http-response', (options) ->
+        logger.debug "Local request #{options.id} aborts!"
+        requests["#{options.id}"]?.abort()
+
+      iostream(socket).on 'http', (body, options) ->
+        logger.debug "Received http request on #{options.path}, id: #{options.id}"
+        headers = {}
+        headers[key] = value for key, value of options.headers when key in ['content-type', 'accept']
+        rawData = ''
+        body.on 'data', (chunk) ->
+          rawData += chunk
+        body.on 'end', ->
+          logger.debug "Request body is '#{rawData}', id: #{options.id}"
+          opt =
+            url: "#{serverUrl}#{options.path}"
+            method: options.method or 'GET'
+            qs: options.query or ''
+            headers: headers
+            body: rawData
+          req = request(opt)
+          requests["#{options.id}"] = req
+          stream = iostream.createStream()
+          stream.on 'end', ->
+            logger.debug "Stream #{options.id} ended!"
+            delete requests["#{options.id}"]
+          req.on('error', (err) ->
+            stream.end(err)
+          ).pipe stream
+          req.on 'response', (response) ->
+            logger.debug "Begin responding to request id: #{options.id}"
+            iostream(socket).emit 'response', stream,
+              statusCode: response.statusCode
+              headers: response.headers
+              id: options.id
 
   regToZookeeperServer: ->
     zk = zookeeper.createClient(config.zk.url)
@@ -115,6 +134,7 @@ module.exports = exports = register =
               ip: ip,
               mac: msg.mac
               uname: msg.uname
+              owner: msg.owner
               api: getApi(msg)
 
             zk.create zk_point(msg.mac), new Buffer(JSON.stringify zkNodeInfo.toJSON()), zookeeper.CreateMode.EPHEMERAL, (err, path) ->
