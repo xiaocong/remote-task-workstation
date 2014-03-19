@@ -8,6 +8,7 @@ YAML = require('yamljs')
 
 adb = require('../adb')
 config = require('../config')
+pubsub = require('../pubsub')
 
 jobs = []
 
@@ -17,10 +18,15 @@ saveJson = (filename, data) ->
 removeJob = (job) ->
   index = jobs.indexOf job
   jobs.splice index, 1 if index >= 0
+  pubsub.pub 'job'
+
+addJob = (job) ->
+  jobs.push job
+  pubsub.pub 'job'
 
 jobsInfo = -> jobs: (job.job_info for job in jobs)
 
-module.exports = exports =
+module.exports = exports = jobApi =
   jobsInfo: jobsInfo
 
   create: (req, res) ->
@@ -69,7 +75,7 @@ module.exports = exports =
             started_at: start_time.getTime()/1000
             started_datetime: start_time.toString()
           job = proc: proc, job_info: result
-          jobs.push job
+          addJob job
           saveJson job_info, result
           proc.stdout.on 'data', (data) ->
             fs.appendFile job_out, data, (err) ->

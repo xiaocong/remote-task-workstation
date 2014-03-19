@@ -12,6 +12,7 @@ logger = require('./logger')
 config = require('./config')
 devices = require('./api/devices')
 jobs = require('./api/jobs')
+pubsub = require('./pubsub')
 
 require("http").globalAgent.maxSockets = 10000  # bull shit, default is 5!!!
 
@@ -58,6 +59,7 @@ module.exports = exports = register =
         socket.emit 'register', info, cb
 
     update = ->
+      logger.debug 'Update workstation info.....'
       getInfo (info) ->
         socket.emit 'update', info
 
@@ -69,7 +71,10 @@ module.exports = exports = register =
           , 10000
         else
           intervalId = setInterval update, 10000
-          socket.on 'disconnect', -> clearInterval intervalId
+          pubsub.sub 'job', update
+          socket.on 'disconnect', ->
+            clearInterval intervalId
+            pubsub.unsub 'job', update
       register callback
 
       socket.on 'disconnect', ->
@@ -144,11 +149,14 @@ module.exports = exports = register =
                 zk.setData path, new Buffer(JSON.stringify zkNodeInfo.toJSON()), (err, stat) ->
                   console.log(err) if err
 
-              intervalId = setInterval ->
-                  getInfo (msg) -> zkNodeInfo.set 'api', getApi(msg)
-                , 10000
+              update = ->
+                getInfo (msg) ->
+                  zkNodeInfo.set 'api', getApi(msg)
+              intervalId = setInterval update, 10000
+              pubsub.sub 'job', update
               zk.once 'disconnect', ->
                 clearInterval intervalId
+                pubsub.unsub 'job', update
                 zkNodeInfo.off 'change'
 
         createZkNode()
