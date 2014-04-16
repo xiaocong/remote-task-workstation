@@ -6,7 +6,7 @@ CMD="git clone -b <%= repo.branch %> <%= repo.url %> <%= local_repo %>"
 CMD="git clone <%= repo.url %> <%= local_repo %>"
 <% } %>
 expect -c "
-  set timeout 30;
+  set timeout 600;
   spawn $CMD
   expect {
     \"Are you sure you want to continue connecting (yes/no)?*\" {send \"yes\r\";}
