@@ -39,12 +39,12 @@ getInfo = do ->
       info.api.devices = result
       cb info
 
-module.exports = exports = register =
+module.exports = exports = reg =
   register: ->
     if config.zk.url
-      register.regToZookeeperServer()
+      reg.regToZookeeperServer()
     else if config.reg_server
-      register.regToHttpServer()
+      reg.regToHttpServer()
     else
       console.error 'Reg server was not defined!'
       process.exit(-1)
