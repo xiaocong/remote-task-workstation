@@ -63,27 +63,35 @@ module.exports = exports = reg =
       getInfo (info) ->
         socket.emit 'update', info
 
+    registered = false
+    socket.on 'disconnect', ->
+      console.info 'SocketIO disconnected!'
+      registered = false
+      iostream(socket).removeAllListeners 'http'
+
+    requests = {}
+    socket.on 'close-http-response', (options) ->
+      logger.debug "Local request #{options.id} aborts!"
+      requests["#{options.id}"]?.abort()
+
     socket.on 'connect', ->
+      console.info 'SocketIO connected!'
       callback = (options) ->
         if options.returncode isnt 0
-          return setTimeout ->
-            register callback
+          console.error 'Registering error!'
+          setTimeout ->
+            console.info 'Retry register!'
+            register(callback) if not registered
           , 10000
         else
+          console.info 'Registering successfully!'
+          registered = true
           intervalId = setInterval update, 10000
           pubsub.sub 'job', update
           socket.on 'disconnect', ->
             clearInterval intervalId
             pubsub.unsub 'job', update
-      register callback
-
-      socket.on 'disconnect', ->
-        iostream(socket).removeAllListeners 'http'
-
-      requests = {}
-      socket.on 'close-http-response', (options) ->
-        logger.debug "Local request #{options.id} aborts!"
-        requests["#{options.id}"]?.abort()
+      register(callback) if not registered
 
       iostream(socket).on 'http', (body, options) ->
         logger.debug "Received http request on #{options.path}, id: #{options.id}"
