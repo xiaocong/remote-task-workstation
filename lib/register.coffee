@@ -88,9 +88,12 @@ module.exports = exports = reg =
           registered = true
           intervalId = setInterval update, 10000
           pubsub.sub 'job', update
-          socket.on 'disconnect', ->
+          clear = ->
+            console.info 'Remove interval updates.'
             clearInterval intervalId
             pubsub.unsub 'job', update
+            socket.removeListener 'disconnect', clear
+          socket.on 'disconnect', clear
       register(callback) if not registered
 
       iostream(socket).on 'http', (body, options) ->
