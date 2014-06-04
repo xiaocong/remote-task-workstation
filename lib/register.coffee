@@ -58,12 +58,13 @@ module.exports = exports = reg =
       getInfo (info) ->
         socket.emit 'register', info, cb
 
+    registered = false
     update = ->
       logger.debug 'Update workstation info.....'
       getInfo (info) ->
-        socket.emit 'update', info
+        logger.debug 'Sending info to server.'
+        socket.emit('update', info) if registered
 
-    registered = false
     socket.on 'disconnect', ->
       console.info 'SocketIO disconnected!'
       registered = false
