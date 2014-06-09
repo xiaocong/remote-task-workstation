@@ -65,6 +65,9 @@ module.exports = exports = reg =
         logger.debug 'Sending info to server.'
         socket.emit('update', info) if registered
 
+    socket.on 'error', (err) ->
+      logger.error err
+
     socket.on 'disconnect', ->
       console.info 'SocketIO disconnected!'
       registered = false
