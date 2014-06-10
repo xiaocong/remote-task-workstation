@@ -56,17 +56,24 @@ module.exports = exports = reg =
 
     register = (cb) ->
       getInfo (info) ->
-        socket.emit 'register', info, cb
+        try
+          socket.emit 'register', info, cb
+        catch error
+          logger.error "Error during emitting register msg: #{error}"
+
 
     registered = false
     update = ->
       logger.debug 'Update workstation info.....'
       getInfo (info) ->
         logger.debug 'Sending info to server.'
-        socket.emit('update', info) if registered
+        try
+          socket.emit('update', info) if registered
+        catch error
+          logger.error "Error during emitting update msg: #{error}"
 
     socket.on 'error', (err) ->
-      logger.error err
+      logger.error "Socket error: #{err}"
 
     socket.on 'disconnect', ->
       console.info 'SocketIO disconnected!'
@@ -126,10 +133,14 @@ module.exports = exports = reg =
           ).pipe stream
           req.on 'response', (response) ->
             logger.debug "Begin responding to request id: #{options.id}"
-            iostream(socket).emit 'response', stream,
-              statusCode: response.statusCode
-              headers: response.headers
-              id: options.id
+            try
+              iostream(socket).emit 'response', stream,
+                statusCode: response.statusCode
+                headers: response.headers
+                id: options.id
+            catch error
+              logger.error "Error during emitting strem response msg: #{error}"
+
 
   regToZookeeperServer: ->
     zk = zookeeper.createClient(config.zk.url)
