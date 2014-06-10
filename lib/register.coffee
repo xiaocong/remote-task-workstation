@@ -56,14 +56,25 @@ module.exports = exports = reg =
 
     register = (cb) ->
       getInfo (info) ->
-        socket.emit 'register', info, cb
+        try
+          socket.emit 'register', info, cb
+        catch error
+          logger.error "Error during emitting register msg: #{error}"
 
+
+    registered = false
     update = ->
       logger.debug 'Update workstation info.....'
       getInfo (info) ->
-        socket.emit 'update', info
+        logger.debug 'Sending info to server.'
+        try
+          socket.emit('update', info) if registered
+        catch error
+          logger.error "Error during emitting update msg: #{error}"
 
-    registered = false
+    socket.on 'error', (err) ->
+      logger.error "Socket error: #{err}"
+
     socket.on 'disconnect', ->
       console.info 'SocketIO disconnected!'
       registered = false
@@ -88,9 +99,12 @@ module.exports = exports = reg =
           registered = true
           intervalId = setInterval update, 10000
           pubsub.sub 'job', update
-          socket.on 'disconnect', ->
+          clear = ->
+            console.info 'Remove interval updates.'
             clearInterval intervalId
             pubsub.unsub 'job', update
+            socket.removeListener 'disconnect', clear
+          socket.on 'disconnect', clear
       register(callback) if not registered
 
       iostream(socket).on 'http', (body, options) ->
@@ -119,10 +133,14 @@ module.exports = exports = reg =
           ).pipe stream
           req.on 'response', (response) ->
             logger.debug "Begin responding to request id: #{options.id}"
-            iostream(socket).emit 'response', stream,
-              statusCode: response.statusCode
-              headers: response.headers
-              id: options.id
+            try
+              iostream(socket).emit 'response', stream,
+                statusCode: response.statusCode
+                headers: response.headers
+                id: options.id
+            catch error
+              logger.error "Error during emitting strem response msg: #{error}"
+
 
   regToZookeeperServer: ->
     zk = zookeeper.createClient(config.zk.url)
