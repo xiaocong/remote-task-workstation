@@ -48,9 +48,9 @@ module.exports = exports = devInfo =
                 'release': props['ro.build.version.release']
                 'sdk': props['ro.build.version.sdk']
                 'codename': props['ro.build.version.codename']
+            result.android.push device
           count -= 1
           callback(result) if count is 0
-        result.android.push device
 
   list: (req, res) ->
     devInfo.devicesInfo req.query.status or 'all', (info) ->
