@@ -15,9 +15,12 @@ Installation
 
         $ [sudo] apt-get install expect graphicsmagick
 
-- Java 7
+- Oracle Java 6
 
-        $ [sudo] apt-get install openjdk-7-jdk
+        $ [sudo] apt-get install software-properties-common
+        $ [sudo] add-apt-repository ppa:webupd8team/java
+        $ [sudo] apt-get update
+        $ [sudo] apt-get install oracle-java6-installer
 
 - Android SDK
 
