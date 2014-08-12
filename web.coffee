@@ -1,3 +1,4 @@
+"use strict"
 
 ###
 Module dependencies.
@@ -31,5 +32,3 @@ require('./lib/api')(app)
 
 http.createServer(app).listen app.get('port'), ->
   logger.info 'Express server listening on port ' + app.get('port')
-
-require('./lib/register').register()
