@@ -46,8 +46,8 @@ Run
 
 ### Run the workstation as a private one
 
-        $ REG_USER=user@email.com ./node_modules/.bin/coffee app.coffee
+        $ REG_USER=user@email.com npm start
 
 ### Run the workstation as a public one
 
-        $ ./node_modules/.bin/coffee app.coffee
+        $ npm start

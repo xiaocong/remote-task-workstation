@@ -11,7 +11,6 @@ _ = require('underscore')
 logger = require('./logger')
 config = require('./config')
 devices = require('./api/devices')
-jobs = require('./api/jobs')
 pubsub = require('./pubsub')
 
 require("http").globalAgent.maxSockets = 10000  # bull shit, default is 5!!!
@@ -21,6 +20,8 @@ ip = do ->
   for dev, addrs of ifaces when dev isnt 'lo'
     for addr in addrs when addr.family is 'IPv4' and addr.address isnt '127.0.0.1'
       return addr.address
+
+serverUrl = "http://localhost:#{config.port}"
 
 getInfo = do ->
   info =
@@ -34,10 +35,18 @@ getInfo = do ->
   require('child_process').exec 'uname -n -m -o', (err, stdout, stderr) ->
     info.uname = stdout.toString().trim()
   (cb) ->
-    info.api.jobs = jobs.jobsInfo().jobs
-    devices.devicesInfo 'good', (result) ->
-      info.api.devices = result
-      cb info
+    request.get {url: "#{serverUrl}/api/0/jobs", json: true}, (err, res, jobs) ->
+      if not err and res.statusCode is 200
+        info.api.jobs = jobs.jobs
+      else
+        info.api.jobs = []
+      request.get {url: "#{serverUrl}/api/0/devices", json: true, qs: {status: 'good'}}, (err, res, devices) ->
+        if not err and res.statusCode is 200
+          info.api.devices = devices
+        else
+          info.api.devices =
+            android: []
+        cb info
 
 module.exports = exports = reg =
   register: ->
@@ -50,7 +59,6 @@ module.exports = exports = reg =
       process.exit(-1)
 
   regToHttpServer: ->
-    serverUrl = "http://localhost:#{config.port}"
     socket = io.connect(config.reg_server)
     iostream = require('socket.io-stream')
 
